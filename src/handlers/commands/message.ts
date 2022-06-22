@@ -12,7 +12,10 @@ async function handleContact(ctx: MyContext & { chat: Chat.PrivateChat }) {
 
   const contact = ctx.message.contact;
 
-  if (numbersWhiteList.includes(parseInt(contact.phone_number).toString())) {
+  if (
+    numbersWhiteList.includes(parseInt(contact.phone_number).toString()) &&
+    contact.user_id === ctx.from.id
+  ) {
     ctx.session.phoneNumber = contact.phone_number;
 
     const keyboard = new Keyboard().add(ctx.t("cabinet_button"));
@@ -23,6 +26,8 @@ async function handleContact(ctx: MyContext & { chat: Chat.PrivateChat }) {
         keyboard: keyboard.build(),
       },
     });
+  } else {
+    await ctx.reply(ctx.t("auth_failure"));
   }
 }
 
