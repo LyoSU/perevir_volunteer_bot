@@ -1,6 +1,6 @@
 {
   "name": "grammy-bot",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
@@ -24,9 +24,10 @@
     "@grammyjs/hydrate": "1.0.3",
     "@grammyjs/parse-mode": "1.1.2",
     "@grammyjs/transformer-throttler": "1.1.1",
+    "@typegoose/typegoose": "^9.9.0",
     "dotenv": "^10.0.0",
     "grammy": "^1.8.3",
-    "mongoose": "^6.4.0",
+    "mongoose": "^6.4.1",
     "typescript": "4.6.2",
     "winston": "^3.7.2"
   },

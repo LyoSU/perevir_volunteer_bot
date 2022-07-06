@@ -1,0 +1,222 @@
+import { Bot, InlineKeyboard, NextFunction } from "grammy";
+import { Chat } from "@grammyjs/types";
+import { MyContext } from "../../types";
+import { isPrivate } from "../../filters/";
+import * as models from "../../database/models";
+import mongoose from "mongoose";
+import message from "./message";
+
+async function startWork(ctx: MyContext & { chat: Chat.PrivateChat }) {
+  ctx.session.state.main = "moderation";
+
+  return moderationView(ctx);
+}
+
+async function stopWork(
+  ctx: MyContext & { chat: Chat.PrivateChat },
+  next: NextFunction
+) {
+  ctx.session.state = {};
+
+  return next();
+}
+
+async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
+  let moderationType: string;
+
+  if (ctx.callbackQuery) {
+    moderationType = ctx.match[2];
+  }
+
+  let request: models.Request;
+
+  if (moderationType === "view") {
+    const previousModeration = ctx.match[3];
+    const requestType = ctx.match[4];
+
+    if (requestType === "previous") {
+      request = await ctx.database.Requests.findOne({
+        $and: [
+          { fakeStatus: 0 },
+          { _id: { $lt: new mongoose.Types.ObjectId(previousModeration) } },
+        ],
+      });
+    } else if (requestType === "next") {
+      request = await ctx.database.Requests.findOne({
+        $and: [
+          { fakeStatus: 0 },
+          { _id: { $gt: new mongoose.Types.ObjectId(previousModeration) } },
+        ],
+      });
+    } else {
+      request = await ctx.database.Requests.findOne({
+        $and: [
+          { fakeStatus: 0 },
+          { _id: new mongoose.Types.ObjectId(previousModeration) },
+        ],
+      });
+    }
+  } else {
+    request = await ctx.database.Requests.findOne({
+      fakeStatus: 0,
+    });
+  }
+
+  const inlineKeyboard = new InlineKeyboard()
+    .text(
+      ctx.t("fake-status", {
+        status: "true",
+      }),
+      `moderation:status:${request._id}:true`
+    )
+    .text(
+      ctx.t("fake-status", {
+        status: "fake",
+      }),
+      `moderation:status:${request._id}:fake`
+    )
+    .text(
+      ctx.t("fake-status", {
+        status: "other",
+      }),
+      `moderation:status:${request._id}:other`
+    )
+    .row()
+    .text(ctx.t("previous-button"), `moderation:view:${request._id}:previous`)
+    .text(ctx.t("next-button"), `moderation:view:${request._id}:next`)
+    .row()
+    .text(ctx.t("stop-work-button"), "stop_work");
+
+  // const source = ctx.t("sources", {
+  //   type: "good",
+  //   name: "Zelenskiy",
+  //   description:
+  //     "офіційний канал президента України Володимира Олександровича Зеленського (джерело)",
+  //   true_procent: "100",
+  //   fake_procent: "0",
+  //   mixed_procent: "0",
+  // });
+
+  const messageText = ctx.t("request-view", {
+    request_id: request._id.toString(),
+    from_name: request.requesterTG || request.viberRequester || "",
+    date: request.createdAt,
+    source: "",
+    text: request.text,
+  });
+
+  if (ctx.callbackQuery) {
+    await ctx.editMessageText(messageText, {
+      reply_markup: inlineKeyboard,
+      disable_web_page_preview: true,
+    });
+  } else {
+    await ctx.reply(messageText, {
+      reply_markup: inlineKeyboard,
+      disable_web_page_preview: true,
+    });
+  }
+}
+
+async function moderationStatus(ctx: MyContext & { chat: Chat.PrivateChat }) {
+  const moderationType = ctx.match[2];
+  const requestId = ctx.match[3];
+  const status = ctx.match[4];
+
+  const request = await ctx.database.Requests.findOne({
+    _id: new mongoose.Types.ObjectId(requestId),
+  });
+
+  ctx.session.state.sub = "comment";
+  ctx.session.state.requestId = requestId;
+  ctx.session.state.fakeStatus = status;
+
+  const inlineKeyboard = new InlineKeyboard()
+    .text(
+      ctx.t("moderation-skip-comment-button", {
+        status: "true",
+      }),
+      `moderation:comment:${requestId}`
+    )
+    .row()
+    .text(ctx.t("back-button"), `moderation:view:${request._id}:current`);
+
+  ctx.editMessageText(
+    ctx.t("moderation-comment", {
+      request_id: request._id.toString() || "",
+      from_name: request.requesterTG || request.viberRequester || "",
+    }),
+    {
+      reply_markup: inlineKeyboard,
+      disable_web_page_preview: true,
+    }
+  );
+}
+
+async function moderationComment(ctx: MyContext & { chat: Chat.PrivateChat }) {
+  const fakeStatusTypes = {
+    true: 1,
+    fake: -1,
+    other: -2,
+  };
+
+  const requestId = ctx.session.state.requestId;
+  const comment = ctx?.message?.text;
+  const fakeStatus = fakeStatusTypes[ctx.session.state.fakeStatus];
+
+  const request = await ctx.database.Requests.findOne({
+    _id: new mongoose.Types.ObjectId(requestId),
+  });
+
+  request.commentText = comment || "";
+  request.fakeStatus = fakeStatus;
+  request.moderation = ctx.from.id;
+  await request.save();
+
+  await ctx.reply(
+    ctx.t("moderation-success", {
+      request_id: request._id.toString(),
+    })
+  );
+
+  ctx.session.state.sub = "";
+
+  return moderationView(ctx);
+}
+
+async function moderationSkipComment(
+  ctx: MyContext & { chat: Chat.PrivateChat }
+) {
+  return moderationComment(ctx);
+}
+
+async function moderationStoped(ctx: MyContext) {
+  ctx.session.state = {};
+
+  return ctx.answerCallbackQuery({
+    text: ctx.t("moderation-stopped"),
+    show_alert: true,
+  });
+}
+
+async function setup(bot: Bot<MyContext>) {
+  const privateMessage = bot.filter(isPrivate);
+
+  privateMessage.callbackQuery("start_work", startWork);
+  privateMessage.callbackQuery("stop_work", stopWork);
+
+  const moderation = bot
+    .filter(isPrivate)
+    .filter((ctx) => ctx.session.state.main === "moderation");
+
+  moderation.callbackQuery(/(moderation):(view):(.*):(.*)/, moderationView);
+  moderation.callbackQuery(/(moderation):(status):(.*):(.*)/, moderationStatus);
+  moderation
+    .filter((ctx) => ctx.session.state.sub === "comment")
+    .on(":text", moderationComment);
+  moderation.callbackQuery(/(moderation):(comment)/, moderationSkipComment);
+
+  bot.callbackQuery(/(moderation):(.*)/, moderationStoped);
+}
+
+export default { setup };

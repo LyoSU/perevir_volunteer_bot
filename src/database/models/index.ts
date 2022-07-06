@@ -1,3 +1,4 @@
-import UserSchema from "./user.schema";
+import { User, Users } from "./users";
+import { Request, Requests } from "./requests";
 
-export default { UserSchema };
+export { User, Users, Request, Requests };

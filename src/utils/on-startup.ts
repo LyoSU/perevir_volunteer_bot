@@ -6,9 +6,12 @@ import handlers from "../handlers";
 import middlewares from "../middlewares";
 import transformers from "../transformers";
 import botCommands from "./bot-commands";
+import { connectMongoose } from "../database/connection";
 
 async function onStartup(botInfo: UserFromGetMe): Promise<void> {
   logger.info("Setting up the bot...");
+
+  await connectMongoose();
 
   await botCommands.setup(bot);
 
