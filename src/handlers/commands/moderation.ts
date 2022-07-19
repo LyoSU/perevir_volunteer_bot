@@ -261,11 +261,20 @@ async function moderationComment(ctx: MyContext & { chat: Chat.PrivateChat }) {
   request.moderation = ctx.from.id;
   await request.save();
 
-  await ctx.reply(
-    ctx.t("moderation-success", {
-      request_id: request.requestId || "-",
-    })
-  );
+  if (ctx.callbackQuery) {
+    await ctx.answerCallbackQuery({
+      text: ctx.t("moderation-success", {
+        request_id: request.requestId || "-",
+      }),
+      show_alert: true,
+    });
+  } else {
+    await ctx.reply(
+      ctx.t("moderation-success", {
+        request_id: request.requestId || "-",
+      })
+    );
+  }
 
   ctx.session.state.sub = "";
 
