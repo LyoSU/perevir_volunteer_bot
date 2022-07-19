@@ -33,6 +33,7 @@ start-work-button = ▶️ Розпочати роботу
 wait-volunteer-button = ⏳ Очікують волонтера ({ $wait_count })
 my-requests-button = 🧑‍💻 Мої заявки ({ $my_requests_count })
 archive-button = 🗃 Архів ({ $archive_count } / { $archive_count })
+faq-button = 💬 Бази знань
 
 # Requests
 sources =
@@ -104,6 +105,14 @@ moderation-status =
     Обери категорію в яку потрібно віднести заявку
 
 stop-work-button = < Закінчити роботу
+
+# FAQ
+faq-message =
+    🧐 <a href="https://gwaramedia.com/metodologiya-faktchekingu-perevirka/">Методологія фактчекінгу в редакції Gwara Media та боті Перевірка</a>
+    ⚖️ <a href="https://gwaramedia.com/politika-faktchekingu/">Політика фактчекінгу</a>
+
+    Організаційні питання / пропозиції: @serhiiprokopenko
+    Технічні питання / пропозиції: @fominvo
 
 # Error
 

@@ -20,7 +20,9 @@ async function cabinetMain(ctx: MyContext & { chat: Chat.PrivateChat }) {
         my_requests_count: myRequestsCount,
       }),
       "my_requests"
-    );
+    )
+    .row()
+    .text(ctx.t("faq-button"), "faq");
 
   const messageText = ctx.t("main", {
     today_requests: 0,

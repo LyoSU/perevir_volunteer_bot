@@ -4,6 +4,7 @@ import { MyContext } from "../../types";
 import { isPrivate } from "../../filters/";
 import * as models from "../../database/models";
 import mongoose from "mongoose";
+import moment from "moment";
 
 async function startWork(ctx: MyContext & { chat: Chat.PrivateChat }) {
   ctx.session.state.main = "moderation";
@@ -51,6 +52,12 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
 
   let request: models.Request;
 
+  const maxDate = moment().subtract(1, "day").toDate();
+
+  const onlyUntaken = {
+    $or: [{ takenAt: { $lte: maxDate } }, { takenAt: { $exists: false } }],
+  };
+
   if (moderationType === "view") {
     const previousModeration = ctx.match[3];
     const requestType = ctx.match[4];
@@ -64,6 +71,7 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
         $and: [
           { fakeStatus: 0 },
           { _id: { $lt: new mongoose.Types.ObjectId(previousModeration) } },
+          onlyUntaken,
         ],
       });
     } else if (requestType === "next") {
@@ -71,6 +79,7 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
         $and: [
           { fakeStatus: 0 },
           { _id: { $gt: new mongoose.Types.ObjectId(previousModeration) } },
+          onlyUntaken,
         ],
       });
     } else {
@@ -78,12 +87,13 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
         $and: [
           { fakeStatus: 0 },
           { _id: new mongoose.Types.ObjectId(previousModeration) },
+          onlyUntaken,
         ],
       });
     }
   } else {
     request = await ctx.database.Requests.findOne({
-      fakeStatus: 0,
+      $and: [{ fakeStatus: 0 }, onlyUntaken],
     });
   }
 
