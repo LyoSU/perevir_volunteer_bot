@@ -66,8 +66,7 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
       request = await ctx.database.Requests.findOne({
         _id: new mongoose.Types.ObjectId(previousModeration),
       });
-    }
-    if (requestType === "next") {
+    } else if (requestType === "next") {
       request = await ctx.database.Requests.findOne({
         $and: [
           { fakeStatus: 0 },
