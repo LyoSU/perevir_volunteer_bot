@@ -5,12 +5,14 @@ import { logger } from "../../utils";
 import cabinet from "./cabinet";
 import message from "./message";
 import moderation from "./moderation";
+import myRequests from "./my-requests";
 
 async function setup(bot: Bot<MyContext>) {
   logger.info("Setting up command handlers...");
 
   await cabinet.setup(bot);
   await moderation.setup(bot);
+  await myRequests.setup(bot);
   await message.setup(bot);
 }
 

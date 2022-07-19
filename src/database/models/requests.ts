@@ -36,6 +36,12 @@ export class Request {
   moderator: string;
 
   @prop()
+  takenModerator: number;
+
+  @prop()
+  takenAt: Date;
+
+  @prop()
   otherUsetsTG: [
     {
       requesterTG: number;

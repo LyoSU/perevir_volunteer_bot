@@ -8,14 +8,18 @@ async function cabinetMain(ctx: MyContext & { chat: Chat.PrivateChat }) {
     main: "cabinet",
   };
 
+  const myRequestsCount = await ctx.database.Requests.countDocuments({
+    $and: [{ fakeStatus: 0 }, { takenModerator: ctx.from.id }],
+  });
+
   const inlineKeyboard = new InlineKeyboard()
     .text(ctx.t("start-work-button"), "start_work")
     .row()
     .text(
-      ctx.t("wait-volunteer-button", {
-        wait_count: 0,
+      ctx.t("my-requests-button", {
+        my_requests_count: myRequestsCount,
       }),
-      "wait-volunteer"
+      "my_requests"
     );
 
   const messageText = ctx.t("main", {
@@ -43,6 +47,10 @@ async function setup(bot: Bot<MyContext>) {
   privateMessage
     .filter((ctx) => ctx?.message?.text === ctx.t("cabinet-button"))
     .use(cabinetMain);
+
+  privateMessage.command("start", cabinetMain);
+  privateMessage.callbackQuery("cabinet", cabinetMain);
+  privateMessage.callbackQuery("stop_work", cabinetMain);
 }
 
 export default { setup };

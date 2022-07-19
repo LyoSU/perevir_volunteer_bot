@@ -4,7 +4,6 @@ import { MyContext } from "../../types";
 import { isPrivate } from "../../filters/";
 import * as models from "../../database/models";
 import mongoose from "mongoose";
-import message from "./message";
 
 async function startWork(ctx: MyContext & { chat: Chat.PrivateChat }) {
   ctx.session.state.main = "moderation";
@@ -21,6 +20,28 @@ async function stopWork(
   return next();
 }
 
+async function moderationTake(ctx: MyContext & { chat: Chat.PrivateChat }) {
+  const requestId = ctx.match[3];
+
+  const request = await ctx.database.Requests.findOne({
+    _id: new mongoose.Types.ObjectId(requestId),
+  });
+
+  request.takenModerator = ctx.from.id;
+  request.takenAt = new Date();
+
+  await request.save();
+
+  await ctx.answerCallbackQuery({
+    text: ctx.t("taked", {
+      request_id: request.requestId || "-",
+    }),
+    show_alert: true,
+  });
+
+  return moderationView(ctx);
+}
+
 async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
   let moderationType: string;
 
@@ -34,7 +55,11 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
     const previousModeration = ctx.match[3];
     const requestType = ctx.match[4];
 
-    if (requestType === "previous") {
+    if (requestType === "id") {
+      request = await ctx.database.Requests.findOne({
+        _id: new mongoose.Types.ObjectId(previousModeration),
+      });
+    } else if (requestType === "previous") {
       request = await ctx.database.Requests.findOne({
         $and: [
           { fakeStatus: 0 },
@@ -82,6 +107,8 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
       `moderation:status:${request._id}:other`
     )
     .row()
+    .text(ctx.t("take-button"), `moderation:take:${request._id}`)
+    .row()
     .text(ctx.t("previous-button"), `moderation:view:${request._id}:previous`)
     .text(ctx.t("next-button"), `moderation:view:${request._id}:next`)
     .row()
@@ -98,7 +125,7 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
   // });
 
   const messageText = ctx.t("request-view", {
-    request_id: request._id.toString(),
+    request_id: request.requestId || "-",
     from_name: request.requesterTG || request.viberRequester || "",
     date: request.createdAt,
     source: "",
@@ -118,8 +145,50 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
   }
 }
 
+async function moderationStatusOther(
+  ctx: MyContext & { chat: Chat.PrivateChat }
+) {
+  const requestId = ctx.match[3];
+
+  const request = await ctx.database.Requests.findOne({
+    _id: new mongoose.Types.ObjectId(requestId),
+  });
+
+  const inlineKeyboard = new InlineKeyboard()
+    .text(
+      ctx.t("fake-status", {
+        status: "reject",
+      }),
+      `moderation:status:${requestId}:reject`
+    )
+    .row()
+    .text(
+      ctx.t("fake-status", {
+        status: "noproof",
+      }),
+      `moderation:status:${requestId}:noproof`
+    )
+    .row()
+    .text(
+      ctx.t("fake-status", {
+        status: "manipulation",
+      }),
+      `moderation:status:${requestId}:manipulation`
+    );
+
+  await ctx.editMessageText(
+    ctx.t("moderation-status", {
+      request_id: request.requestId || "-",
+      from_name: request.requesterTG || request.viberRequester || "",
+    }),
+    {
+      reply_markup: inlineKeyboard,
+      disable_web_page_preview: true,
+    }
+  );
+}
+
 async function moderationStatus(ctx: MyContext & { chat: Chat.PrivateChat }) {
-  const moderationType = ctx.match[2];
   const requestId = ctx.match[3];
   const status = ctx.match[4];
 
@@ -143,7 +212,7 @@ async function moderationStatus(ctx: MyContext & { chat: Chat.PrivateChat }) {
 
   ctx.editMessageText(
     ctx.t("moderation-comment", {
-      request_id: request._id.toString() || "",
+      request_id: request.requestId || "-",
       from_name: request.requesterTG || request.viberRequester || "",
     }),
     {
@@ -157,7 +226,9 @@ async function moderationComment(ctx: MyContext & { chat: Chat.PrivateChat }) {
   const fakeStatusTypes = {
     true: 1,
     fake: -1,
-    other: -2,
+    reject: -2,
+    noproof: -4,
+    manipulation: -5,
   };
 
   const requestId = ctx.session.state.requestId;
@@ -175,7 +246,7 @@ async function moderationComment(ctx: MyContext & { chat: Chat.PrivateChat }) {
 
   await ctx.reply(
     ctx.t("moderation-success", {
-      request_id: request._id.toString(),
+      request_id: request.requestId || "-",
     })
   );
 
@@ -205,11 +276,14 @@ async function setup(bot: Bot<MyContext>) {
   privateMessage.callbackQuery("start_work", startWork);
   privateMessage.callbackQuery("stop_work", stopWork);
 
-  const moderation = bot
-    .filter(isPrivate)
-    .filter((ctx) => ctx.session.state.main === "moderation");
+  const moderation = bot.filter(isPrivate);
 
   moderation.callbackQuery(/(moderation):(view):(.*):(.*)/, moderationView);
+  moderation.callbackQuery(/(moderation):(take):(.*)/, moderationTake);
+  moderation.callbackQuery(
+    /(moderation):(status):(.*):other/,
+    moderationStatusOther
+  );
   moderation.callbackQuery(/(moderation):(status):(.*):(.*)/, moderationStatus);
   moderation
     .filter((ctx) => ctx.session.state.sub === "comment")
