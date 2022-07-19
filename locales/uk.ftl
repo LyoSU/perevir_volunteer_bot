@@ -33,7 +33,7 @@ start-work-button = ▶️ Розпочати роботу
 wait-volunteer-button = ⏳ Очікують волонтера ({ $wait_count })
 my-requests-button = 🧑‍💻 Мої заявки ({ $my_requests_count })
 archive-button = 🗃 Архів ({ $archive_count } / { $archive_count })
-faq-button = 💬 Бази знань
+faq-button = 🎓 База Знань
 
 # Requests
 sources =
@@ -57,7 +57,7 @@ sources =
 request-view =
     ⏳ Заявка №{ $request_id } від { $from_name }
     📅 { DATETIME($date, hour: "numeric", minute: "numeric", day: "numeric", month: "long") }
-    🤖️ Повʼязаних запитів: 5
+    🤖️ Повʼязаних запитів: { $requests_count }
     
     { $text }
 

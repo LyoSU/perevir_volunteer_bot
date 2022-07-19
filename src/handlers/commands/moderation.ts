@@ -68,11 +68,7 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
       });
     } else if (requestType === "previous") {
       request = await ctx.database.Requests.findOne({
-        $and: [
-          { fakeStatus: 0 },
-          { _id: { $lt: new mongoose.Types.ObjectId(previousModeration) } },
-          onlyUntaken,
-        ],
+        _id: new mongoose.Types.ObjectId(previousModeration),
       });
     } else if (requestType === "next") {
       request = await ctx.database.Requests.findOne({
@@ -138,8 +134,9 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
     request_id: request.requestId || "-",
     from_name: request.requesterTG || request.viberRequester || "",
     date: request.createdAt,
+    requests_count: request.otherUsetsTG.length,
     source: "",
-    text: request.text,
+    text: request.text || "",
   });
 
   if (ctx.callbackQuery) {

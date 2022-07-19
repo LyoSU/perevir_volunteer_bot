@@ -20,9 +20,7 @@ async function cabinetMain(ctx: MyContext & { chat: Chat.PrivateChat }) {
         my_requests_count: myRequestsCount,
       }),
       "my_requests"
-    )
-    .row()
-    .text(ctx.t("faq-button"), "faq");
+    );
 
   const messageText = ctx.t("main", {
     today_requests: 0,
@@ -50,7 +48,6 @@ async function setup(bot: Bot<MyContext>) {
     .filter((ctx) => ctx?.message?.text === ctx.t("cabinet-button"))
     .use(cabinetMain);
 
-  privateMessage.command("start", cabinetMain);
   privateMessage.callbackQuery("cabinet", cabinetMain);
   privateMessage.callbackQuery("stop_work", cabinetMain);
 }

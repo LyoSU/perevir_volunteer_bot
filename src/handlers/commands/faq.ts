@@ -8,7 +8,7 @@ async function faqMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
 
   const messageText = ctx.t("faq-message");
 
-  await ctx.editMessageText(messageText, {
+  await ctx.reply(messageText, {
     reply_markup: keyboard,
     disable_web_page_preview: true,
   });
@@ -17,7 +17,9 @@ async function faqMessage(ctx: MyContext & { chat: Chat.PrivateChat }) {
 async function setup(bot: Bot<MyContext>) {
   const privateMessage = bot.filter(isPrivate);
 
-  privateMessage.callbackQuery(/faq/, faqMessage);
+  privateMessage
+    .filter((ctx) => ctx?.message?.text === ctx.t("faq-button"))
+    .use(faqMessage);
 }
 
 export default { setup };
