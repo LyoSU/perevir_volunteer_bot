@@ -66,11 +66,8 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
       request = await ctx.database.Requests.findOne({
         _id: new mongoose.Types.ObjectId(previousModeration),
       });
-    } else if (requestType === "previous") {
-      request = await ctx.database.Requests.findOne({
-        _id: new mongoose.Types.ObjectId(previousModeration),
-      });
-    } else if (requestType === "next") {
+    }
+    if (requestType === "next") {
       request = await ctx.database.Requests.findOne({
         $and: [
           { fakeStatus: 0 },
@@ -112,13 +109,26 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
       }),
       `moderation:status:${request._id}:other`
     )
-    .row()
+    .row();
+
+  inlineKeyboard
     .text(ctx.t("take-button"), `moderation:take:${request._id}`)
-    .row()
-    .text(ctx.t("previous-button"), `moderation:view:${request._id}:previous`)
+    .row();
+
+  if (ctx.session.state.requestId) {
+    inlineKeyboard.text(
+      ctx.t("previous-button"),
+      `moderation:view:${ctx.session.state.requestId}:id`
+    );
+  }
+
+  inlineKeyboard
     .text(ctx.t("next-button"), `moderation:view:${request._id}:next`)
-    .row()
-    .text(ctx.t("stop-work-button"), "stop_work");
+    .row();
+
+  inlineKeyboard.text(ctx.t("stop-work-button"), "stop_work");
+
+  ctx.session.state.requestId = request._id;
 
   // const source = ctx.t("sources", {
   //   type: "good",
