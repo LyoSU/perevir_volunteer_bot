@@ -63,6 +63,9 @@ request-view =
 
     { $source }
 
+media-caption =
+    Медіа до заявки №{ $request_id }
+
 my_requests =
     <b>Заявки</b>
 

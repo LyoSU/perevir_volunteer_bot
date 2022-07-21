@@ -1,10 +1,27 @@
-import { Bot, InlineKeyboard, NextFunction } from "grammy";
+import {
+  Api,
+  Bot,
+  Context,
+  InlineKeyboard,
+  NextFunction,
+  InputFile,
+} from "grammy";
+import { FileFlavor, FileApiFlavor, hydrateFiles } from "@grammyjs/files";
 import { Chat } from "@grammyjs/types";
 import { MyContext } from "../../types";
 import { isPrivate } from "../../filters/";
 import * as models from "../../database/models";
 import mongoose from "mongoose";
 import moment from "moment";
+
+type PerevirContext = FileFlavor<Context>;
+type PerevirApi = FileApiFlavor<Api>;
+
+const preverirBot = new Bot<PerevirContext, PerevirApi>(
+  process.env.PEREVIR_BOT_TOKEN
+);
+
+preverirBot.api.config.use(hydrateFiles(process.env.PEREVIR_BOT_TOKEN));
 
 async function startWork(ctx: MyContext & { chat: Chat.PrivateChat }) {
   ctx.session.state.main = "moderation";
@@ -44,6 +61,19 @@ async function moderationTake(ctx: MyContext & { chat: Chat.PrivateChat }) {
 }
 
 async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
+  if (
+    ctx.session.state.mediaMessages &&
+    ctx.session.state.mediaMessages.length > 0
+  ) {
+    for (const message of ctx.session.state.mediaMessages) {
+      await ctx.api
+        .deleteMessage(message.chat.id, message.message_id)
+        .catch((() => {}) as any);
+    }
+
+    ctx.session.state.mediaMessages = [];
+  }
+
   let moderationType: string;
 
   if (ctx.callbackQuery) {
@@ -87,6 +117,52 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
     request = await ctx.database.Requests.findOne({
       $and: [{ fakeStatus: 0 }, onlyUntaken],
     });
+  }
+
+  const mediaCaption = ctx.t("media-caption", {
+    request_id: request.requestId || "-",
+  });
+
+  const media = [];
+
+  if (request.image.length > 0) {
+    for (const image of request.image) {
+      const imageObject = await ctx.database.Images.findById(image);
+
+      if (imageObject) {
+        const fileInfo = await preverirBot.api.getFile(
+          imageObject.telegramFileId
+        );
+
+        const filePath = await fileInfo.download();
+
+        media.push({
+          type: "photo",
+          media: new InputFile(filePath),
+          caption: mediaCaption,
+        });
+      }
+    }
+  }
+
+  if (request.video.length > 0) {
+    for (const video of request.video) {
+      const videoObject = await ctx.database.Videos.findById(video);
+
+      if (videoObject) {
+        const fileInfo = await preverirBot.api.getFile(
+          videoObject.telegramFileId
+        );
+
+        const filePath = await fileInfo.download();
+
+        media.push({
+          type: "video",
+          media: new InputFile(filePath),
+          caption: mediaCaption,
+        });
+      }
+    }
   }
 
   const inlineKeyboard = new InlineKeyboard()
@@ -148,7 +224,15 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
     text: request.text || "",
   });
 
-  if (ctx.callbackQuery) {
+  if (media.length > 0) {
+    await ctx.deleteMessage();
+
+    const mediaMessages = await ctx.replyWithMediaGroup(media);
+
+    ctx.session.state.mediaMessages = mediaMessages;
+  }
+
+  if (ctx.callbackQuery && media.length <= 0) {
     await ctx.editMessageText(messageText, {
       reply_markup: inlineKeyboard,
       disable_web_page_preview: true,

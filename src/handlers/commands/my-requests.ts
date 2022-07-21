@@ -16,7 +16,7 @@ async function myRequests(ctx: MyContext & { chat: Chat.PrivateChat }) {
   findMyRequests.forEach((request) => {
     let name = "";
 
-    if (request.text.length > 50) {
+    if (request.text && request.text.length > 50) {
       name = request.text.substring(0, 50) + "...";
     } else {
       name = request.text;
