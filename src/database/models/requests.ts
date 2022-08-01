@@ -39,6 +39,9 @@ export class Request {
   takenModerator: number;
 
   @prop()
+  needUpdate: boolean;
+
+  @prop()
   takenAt: Date;
 
   @prop()

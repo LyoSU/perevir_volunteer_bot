@@ -12,7 +12,7 @@ import { MyContext } from "../../types";
 import { isPrivate } from "../../filters/";
 import * as models from "../../database/models";
 import mongoose from "mongoose";
-import moment from "moment";
+import moment, { lang } from "moment";
 
 type PerevirContext = FileFlavor<Context>;
 type PerevirApi = FileApiFlavor<Api>;
@@ -46,6 +46,7 @@ async function moderationTake(ctx: MyContext & { chat: Chat.PrivateChat }) {
   });
 
   request.takenModerator = ctx.from.id;
+  request.needUpdate = true;
   request.takenAt = new Date();
 
   await request.save();
@@ -102,13 +103,25 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
           { fakeStatus: 0 },
           { _id: { $gt: new mongoose.Types.ObjectId(previousModeration) } },
           onlyUntaken,
+          {
+            createdAt: {
+              $gte: new Date("2022-07-01"),
+            },
+          },
+          {
+            language: "ua",
+          },
         ],
       });
     } else {
       request = await ctx.database.Requests.findOne({
         $and: [
-          { fakeStatus: 0 },
-          { _id: new mongoose.Types.ObjectId(previousModeration) },
+          {
+            fakeStatus: 0,
+          },
+          {
+            _id: new mongoose.Types.ObjectId(previousModeration),
+          },
           onlyUntaken,
         ],
       });
@@ -225,7 +238,7 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
   });
 
   if (media.length > 0) {
-    await ctx.deleteMessage();
+    await ctx.deleteMessage().catch((() => {}) as any);
 
     const mediaMessages = await ctx.replyWithMediaGroup(media);
 
@@ -341,6 +354,7 @@ async function moderationComment(ctx: MyContext & { chat: Chat.PrivateChat }) {
 
   request.commentText = comment || "";
   request.fakeStatus = fakeStatus;
+  request.needUpdate = true;
   request.moderation = ctx.from.id;
   await request.save();
 
