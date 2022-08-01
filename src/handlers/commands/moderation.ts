@@ -100,8 +100,14 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
     } else if (requestType === "next") {
       request = await ctx.database.Requests.findOne({
         $and: [
-          { fakeStatus: 0 },
-          { _id: { $gt: new mongoose.Types.ObjectId(previousModeration) } },
+          {
+            fakeStatus: 0,
+          },
+          {
+            _id: {
+              $gt: new mongoose.Types.ObjectId(previousModeration),
+            },
+          },
           onlyUntaken,
           {
             createdAt: {
@@ -128,7 +134,20 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
     }
   } else {
     request = await ctx.database.Requests.findOne({
-      $and: [{ fakeStatus: 0 }, onlyUntaken],
+      $and: [
+        {
+          fakeStatus: 0,
+        },
+        onlyUntaken,
+        {
+          createdAt: {
+            $gte: new Date("2022-07-01"),
+          },
+        },
+        {
+          language: "ua",
+        },
+      ],
     });
   }
 
