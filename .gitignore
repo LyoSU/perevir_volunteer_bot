@@ -2,3 +2,6 @@ node_modules
 dist
 .env
 whitelist.json
+/.idea
+package-lock.json
+.DS_Store
