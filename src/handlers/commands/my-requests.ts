@@ -5,6 +5,10 @@ import { isPrivate } from "../../filters/";
 import moment from "moment";
 
 async function myRequests(ctx: MyContext & { chat: Chat.PrivateChat }) {
+  ctx.session.state = {
+    main: "my_requests",
+  };
+
   const findMyRequests = await ctx.database.Requests.find({
     $and: [{ fakeStatus: 0 }, { takenModerator: ctx.from.id }],
   });

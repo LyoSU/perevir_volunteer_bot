@@ -12,7 +12,7 @@ import { MyContext } from "../../types";
 import { isPrivate } from "../../filters/";
 import * as models from "../../database/models";
 import mongoose from "mongoose";
-import moment, { lang } from "moment";
+import moment from "moment";
 
 type PerevirContext = FileFlavor<Context>;
 type PerevirApi = FileApiFlavor<Api>;
@@ -90,14 +90,25 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
   };
 
   if (moderationType === "view") {
-    const previousModeration = ctx.match[3];
+    const previousModerationId = ctx.match[3];
     const requestType = ctx.match[4];
-
     if (requestType === "id") {
       request = await ctx.database.Requests.findOne({
-        _id: new mongoose.Types.ObjectId(previousModeration),
+        _id: new mongoose.Types.ObjectId(previousModerationId),
       });
     } else if (requestType === "next") {
+      const previousModeration = await ctx.database.Requests.findById(
+        new mongoose.Types.ObjectId(previousModerationId)
+      );
+
+      if (previousModeration) {
+        previousModeration.needUpdate = false;
+        previousModeration.takenModerator = undefined;
+        previousModeration.takenAt = undefined;
+
+        await previousModeration.save();
+      }
+
       request = await ctx.database.Requests.findOne({
         $and: [
           {
@@ -105,7 +116,7 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
           },
           {
             _id: {
-              $gt: new mongoose.Types.ObjectId(previousModeration),
+              $gt: new mongoose.Types.ObjectId(previousModerationId),
             },
           },
           onlyUntaken,
@@ -126,7 +137,7 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
             fakeStatus: 0,
           },
           {
-            _id: new mongoose.Types.ObjectId(previousModeration),
+            _id: new mongoose.Types.ObjectId(previousModerationId),
           },
           onlyUntaken,
         ],
@@ -218,22 +229,33 @@ async function moderationView(ctx: MyContext & { chat: Chat.PrivateChat }) {
     )
     .row();
 
-  inlineKeyboard
-    .text(ctx.t("take-button"), `moderation:take:${request._id}`)
-    .row();
-
-  if (ctx.session.state.requestId) {
-    inlineKeyboard.text(
-      ctx.t("previous-button"),
-      `moderation:view:${ctx.session.state.requestId}:id`
-    );
+  if (request.takenModerator === undefined) {
+    inlineKeyboard
+      .text(ctx.t("take-button"), `moderation:take:${request._id}`)
+      .row();
   }
 
-  inlineKeyboard
-    .text(ctx.t("next-button"), `moderation:view:${request._id}:next`)
-    .row();
+  if (ctx.session.state.main === "my_requests") {
+    inlineKeyboard.text(ctx.t("back-button"), "my_requests").row();
+  } else {
+    request.needUpdate = true;
+    request.takenModerator = ctx.from.id;
+    request.takenAt = new Date();
+    await request.save();
 
-  inlineKeyboard.text(ctx.t("stop-work-button"), "stop_work");
+    if (ctx.session.state.requestId) {
+      inlineKeyboard.text(
+        ctx.t("previous-button"),
+        `moderation:view:${ctx.session.state.requestId}:id`
+      );
+    }
+
+    inlineKeyboard
+      .text(ctx.t("next-button"), `moderation:view:${request._id}:next`)
+      .row();
+
+    inlineKeyboard.text(ctx.t("stop-work-button"), "stop_work");
+  }
 
   ctx.session.state.requestId = request._id;
 

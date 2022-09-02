@@ -1,13 +1,8 @@
 import fs from "fs";
 import { join, resolve } from "path";
-import { Context, NextFunction } from "grammy";
-import { MyContext } from "../types";
 import { Fluent } from "@moebius/fluent";
-import {
-  useFluent,
-  FluentContextFlavor,
-  LocaleNegotiator,
-} from "@grammyjs/fluent";
+import { useFluent, LocaleNegotiator } from "@grammyjs/fluent";
+import { MyContext } from "../types";
 
 const appRoot = join(resolve(__dirname), "..", "..");
 const appLocales = join(appRoot, "locales");
@@ -38,9 +33,7 @@ const loadLocales = async () => {
 
 loadLocales();
 
-const localeNegotiator = (ctx: Context) =>
-  // (ctx.chat && ctx.session.languageCode) || ctx.from?.language_code;
-  ctx.from?.language_code;
+const localeNegotiator = (ctx: MyContext) => ctx.from?.language_code;
 
 export const i18n = () =>
   useFluent({

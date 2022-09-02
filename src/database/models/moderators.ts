@@ -1,5 +1,5 @@
 import { prop, getModelForClass } from "@typegoose/typegoose";
-import {ObjectId} from "mongoose";
+import { ObjectId } from "mongoose";
 
 export class Moderator {
   @prop()
@@ -9,7 +9,7 @@ export class Moderator {
   @prop()
   public name?: string;
   @prop()
-  requests: [{ type: ObjectId, ref: 'Requests' }];
+  requests: [{ type: ObjectId; ref: "Requests" }];
   @prop()
   public lastAction?: Date;
   @prop()

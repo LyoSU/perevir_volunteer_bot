@@ -2,6 +2,7 @@ import { prop, getModelForClass } from "@typegoose/typegoose";
 import { ObjectId } from "mongoose";
 
 export class Request {
+  [x: string]: any;
   @prop()
   _id: ObjectId;
 
